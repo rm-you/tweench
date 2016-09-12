@@ -1,0 +1,6 @@
+boto3
+praw
+colorific
+pillow
+requests
+sqlalchemy
