@@ -1,10 +1,12 @@
 import requests
 import colorific
+import collections
 from PIL import Image as PILImage
 import io
 from archiver import constants
 from archiver import config
 from archiver import clients
+from gfycat import client as gfycat
 import re
 import logging
 
@@ -14,20 +16,27 @@ LOG = logging.getLogger(__name__)
 
 class DownloadHandler(object):
     def __init__(self):
-        self._regexes = {
-            re.compile(constants.IMGUR_ALBUM, re.IGNORECASE): self._album,
-            re.compile(constants.IMGUR_PAGE, re.IGNORECASE): self._single,
-            re.compile(constants.IMGUR_SINGLE, re.IGNORECASE): self._single,
-            re.compile(constants.GFYCAT, re.IGNORECASE): self._gfycat,
-            re.compile(constants.EXTERNAL, re.IGNORECASE): self._external,
-        }
-        if config.IMGUR_MASHAPE_KEY:
+        self.conf = config.get_config()
+
+        self._regexes = collections.OrderedDict([
+            (re.compile(constants.IMGUR_ALBUM, re.IGNORECASE), self._album),
+            (re.compile(constants.IMGUR_GALLERY, re.IGNORECASE), self._album),
+            (re.compile(constants.IMGUR_HASHES, re.IGNORECASE), self._hashes),
+            (re.compile(constants.IMGUR_PAGE, re.IGNORECASE), self._single),
+            (re.compile(constants.IMGUR_SINGLE, re.IGNORECASE), self._single),
+            (re.compile(constants.GFYCAT, re.IGNORECASE), self._gfycat),
+            (re.compile(constants.EXTERNAL, re.IGNORECASE), self._external)
+        ])
+
+        if self.conf.IMGUR_MASHAPE_KEY:
             self.imgur = clients.MashapeImgurClient(
-                client_id=config.IMGUR_CLIENT_ID,
-                mashape_key=config.IMGUR_MASHAPE_KEY
+                client_id=self.conf.IMGUR_CLIENT_ID,
+                mashape_key=self.conf.IMGUR_MASHAPE_KEY
             )
         else:
-            self.imgur = clients.ImgurClient(config.IMGUR_CLIENT_ID)
+            self.imgur = clients.ImgurClient(self.conf.IMGUR_CLIENT_ID)
+
+        self.gfycat = gfycat.GfycatClient()
 
     def store_images(self, praw_post):
         LOG.info("Determining type of image URL: {url}"
@@ -41,32 +50,37 @@ class DownloadHandler(object):
         for regex in self._regexes.iterkeys():
             m = regex.match(praw_post.url)
             if m:
-                images = self._regexes[regex](
+                images.extend(self._regexes[regex](
                     *m.groups(), base_path=path
-                )
+                ))
                 break
-        return images
-
-    def _album(self, album_id, base_path=''):
-        LOG.info("Album detected: {album_id}".format(album_id=album_id))
-        image_urls = self.imgur.get_album(album_id)
-        images = [
-            self._download_one_imgur(
-                url=url, name=url.split('/')[-1], base_path=base_path
-            )
-            for url in image_urls
-        ]
         return images
 
     def _single(self, image_id, base_path=''):
         LOG.info("Single imgur page detected: {page}".format(page=image_id))
         image_url = self.imgur.get_image(image_id)
-        image = self._download_one_imgur(
-            url=image_url, name=image_url.split('/')[-1], base_path=base_path
-        )
-        return image
+        image = self._download_one_imgur(url=image_url, base_path=base_path)
+        return [image]
 
-    def _download_one_imgur(self, url, name, base_path):
+    def _album(self, album_id, base_path=''):
+        LOG.info("Album detected: {album_id}".format(album_id=album_id))
+        image_urls = self.imgur.get_album(album_id)
+        images = [self._download_one_imgur(url=url, base_path=base_path)
+                  for url in image_urls]
+        return images
+
+    def _hashes(self, hashes, base_path=''):
+        hashes = hashes.strip(',').split(',')
+        LOG.info("Image hashes detected: {hashes}".format(hashes=hashes))
+        image_urls = [self.imgur.get_image(image_id) for image_id in hashes]
+        images = [
+            self._download_one_imgur(url=url, base_path=base_path)
+            for url in image_urls
+            ]
+        return images
+
+    def _download_one_imgur(self, url, base_path):
+        name = url.split('/')[-1]
         path = "{base}/{name}".format(base=base_path, name=name)
         LOG.info("--> Downloading '{path}': {url}".format(path=path, url=url))
         r = requests.get(url, stream=False)
@@ -74,22 +88,45 @@ class DownloadHandler(object):
 
     def _gfycat(self, gfy_id, base_path=''):
         LOG.info("Gfycat detected: {gfy_id}".format(gfy_id=gfy_id))
+        gfy_data = self.gfycat.query_gfy(gfy_id)
+        if gfy_data and 'gfyItem' in gfy_data:
+            url = gfy_data['gfyItem']['webmUrl']
+            r1 = requests.get(url, stream=False)
 
-    def _external(self, url, name, base_path=''):
+            thumb_url = gfy_data['gfyItem']['max2mbGif']
+            r2 = requests.get(thumb_url, stream=False)
+
+            name = url.split('/')[-1]
+            name_thumb = thumb_url.split('/')[-1]
+            path = "{base}/{name}".format(base=base_path, name=name)
+            path_thumb = "{base}/{name}".format(base=base_path, name=name_thumb)
+            return [self._handle_gfy_data(
+                r1.content, r2.content, path, path_thumb)]
+
+    def _external(self, url, base_path=''):
         LOG.info("Generic image URL detected: {url}".format(url=url))
         r = requests.get(url, stream=False)
+        name = url.split('/')[-1]
         path = "{base}/{name}".format(base=base_path, name=name)
         return [self._handle_image_data(r.content, path)]
 
     def _handle_image_data(self, data, path):
         image = Image(path=path, data=data)
         image.upload()
-        image.upload_thumbnail(config.THUMBNAIL_SIZE)
+        image.upload_thumbnail(self.conf.THUMBNAIL_SIZE)
+        return image
+
+    def _handle_gfy_data(self, data, thumbnail_data, path, path_thumb):
+        image = Image(path=path, data=data)
+        thumb = GfyThumbnail(path=path_thumb, data=thumbnail_data)
+        image.upload()
+        thumb.upload_thumbnail()
         return image
 
 
 class Image(object):
     def __init__(self, path, data):
+        self.conf = config.get_config()
         self.s3 = clients.s3_client()
         self.path = path
         self.data = data
@@ -99,14 +136,14 @@ class Image(object):
 
     def upload(self):
         io_data = io.BytesIO(self.data)
-        self.s3.upload(config.IMAGE_BUCKET_NAME, self.path, io_data,
+        self.s3.upload(self.conf.IMAGE_BUCKET_NAME, self.path, io_data,
                        {"ContentType": "image/{}".format(self.type.lower())})
 
     def upload_thumbnail(self, width=None, height=None):
         if (not width and not height) or (width and height):
-            raise Exception("Must supply either width or height!")
+            raise ArithmeticError("Must supply either width or height!")
         thumb_data = self._thumbnail(width, height)
-        self.s3.upload(config.THUMB_BUCKET_NAME, self.path, thumb_data,
+        self.s3.upload(self.conf.THUMB_BUCKET_NAME, self.path, thumb_data,
                        {"ContentType": "image/{}".format(self.type.lower())})
 
     def _thumbnail(self, width=None, height=None):
@@ -134,15 +171,11 @@ class Image(object):
         return self.pi.size
 
 
-class Gfy(Image):
-    def _thumbnail(self, width=None, height=None):
-        LOG.info("Fetching pre-made Gfycat thumbnail...")
-        return self.data  # TODO
+class GfyThumbnail(Image):
+    def upload(self):
+        raise NotImplementedError()
 
-    def get_colors(self):
-        LOG.info("Analyzing color data for Gfy...")
-        return []  # TODO
-
-    def get_dimensions(self):
-        LOG.info("Calculating dimensions for Gfy...")
-        return 0, 0  # TODO
+    def upload_thumbnail(self, **kwargs):
+        io_data = io.BytesIO(self.data)
+        self.s3.upload(self.conf.THUMB_BUCKET_NAME, self.path, io_data,
+                       {"ContentType": "image/{}".format(self.type.lower())})

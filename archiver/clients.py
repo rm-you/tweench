@@ -25,11 +25,12 @@ def s3_client():
 
 
 def get_session():
+    conf = config.get_config()
     if not _CLIENTS['session']:
         _CLIENTS['session'] = session.Session(
-            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=config.AWS_ACCESS_KEY_SECRET,
-            region_name=config.AWS_REGION,
+            aws_access_key_id=conf.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=conf.AWS_ACCESS_KEY_SECRET,
+            region_name=conf.AWS_REGION,
         )
     return _CLIENTS['session']
 

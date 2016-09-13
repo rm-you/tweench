@@ -4,3 +4,7 @@ colorific
 pillow
 requests
 sqlalchemy
+gfycat
+
+mock
+requests-mock
