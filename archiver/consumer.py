@@ -1,5 +1,6 @@
 from archiver import clients
 from archiver import constants
+from archiver import config
 from archiver import messages
 from archiver import images
 import logging
@@ -14,7 +15,7 @@ class Consumer(object):
 
     def __init__(self):
         self.r = praw.Reddit(self.agent)
-        self.sqs = clients.sqs_client(constants.QUEUE_NAME)
+        self.sqs = clients.sqs_client(config.QUEUE_NAME)
         self.downloader = images.DownloadHandler()
         self._type_map = {
             constants.SUBREDDIT_MESSAGE: self.store_subreddit,

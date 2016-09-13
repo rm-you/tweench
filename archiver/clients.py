@@ -2,6 +2,8 @@ import json
 from boto3 import session
 from archiver import messages
 from archiver import constants
+from archiver import config
+import requests
 
 _CLIENTS = {
     'session': None,
@@ -25,9 +27,9 @@ def s3_client():
 def get_session():
     if not _CLIENTS['session']:
         _CLIENTS['session'] = session.Session(
-            aws_access_key_id=constants.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=constants.AWS_ACCESS_KEY_SECRET,
-            region_name=constants.AWS_REGION,
+            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=config.AWS_ACCESS_KEY_SECRET,
+            region_name=config.AWS_REGION,
         )
     return _CLIENTS['session']
 
@@ -84,3 +86,46 @@ class SQSClient(object):
             QueueUrl=self.queue_url,
             ReceiptHandle=mid
         )
+
+
+class ImgurClient(object):
+    _base_url = "https://api.imgur.com"
+    _album = "/3/album/{id}"
+    _image = "/3/image/{id}"
+
+    def __init__(self, client_id):
+        self.client_id = client_id
+
+    def _prepare_headers(self):
+        headers = {
+            'Authorization': 'Client-ID {0}'.format(self.client_id),
+        }
+        return headers
+
+    def get_album(self, album_id):
+        album_url = self._album.format(id=album_id)
+        url = "{0}{1}".format(self._base_url, album_url)
+        r = requests.get(url, headers=self._prepare_headers())
+        images = r.json().get('data', {}).get('images', [])
+        links = [i.get('link') for i in images if i.get('link')]
+        return links
+
+    def get_image(self, image_id):
+        image_url = self._image.format(id=image_id)
+        url = "{0}{1}".format(self._base_url, image_url)
+        r = requests.get(url, headers=self._prepare_headers())
+        link = r.json().get('data', {}).get('link')
+        return link
+
+
+class MashapeImgurClient(ImgurClient):
+    _base_url = "https://imgur-apiv3.p.mashape.com"
+
+    def __init__(self, client_id, mashape_key):
+        super(MashapeImgurClient, self).__init__(client_id)
+        self.mashape_key = mashape_key
+
+    def _prepare_headers(self):
+        headers = super(MashapeImgurClient, self)._prepare_headers()
+        headers.update({'X-Mashape-Key': self.mashape_key})
+        return headers
