@@ -1,0 +1,16 @@
+[auth]
+access_key_id = my_key
+access_key_secret = my_secret
+region = us-east-1
+
+[s3]
+image_bucket = my_image_bucket
+thumb_bucket = my_thumb_bucket
+thumbnail_size = 300
+
+[sqs]
+queue_name = postprocessing
+
+[imgur]
+client_id = my_client
+mashape_key = my_mashape
