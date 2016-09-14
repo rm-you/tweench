@@ -14,11 +14,11 @@ class QueueMessage(object):
     def enqueue(self, client):
         LOG.info("Enqueueing message: ({type}) {body}"
                  .format(type=self.type, body=self.body))
-        client.send_message(
-            str(self)
-        )
+        client.send_message(str(self))
 
     def finish(self, client):
+        if not self.id:
+            raise AttributeError("Message has no ID!")
         LOG.info("Deleting message: ({type}) {body}"
                  .format(type=self.type, body=self.body))
         client.delete_message(self.id)

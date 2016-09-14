@@ -8,9 +8,9 @@ def get_config(_config={}):
 
 
 class Config(object):
-    def __init__(self):
+    def __init__(self, config_file='tweench.cfg'):
         config = ConfigParser.ConfigParser()
-        config.read('tweench.cfg')
+        config.read(config_file)
 
         # SQS
         self.QUEUE_NAME = config.get('sqs', 'queue_name')
