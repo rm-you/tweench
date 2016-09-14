@@ -29,7 +29,8 @@ FAKE_GFY_ID = 'OctopusCluster'
 FAKE_GFY_WEBM = 'https://fat.gfycat.com/{}.webm'.format(FAKE_GFY_ID)
 FAKE_GFY_THUMB = 'https://thumbs.gfycat.com/{}-small.gif'.format(FAKE_GFY_ID)
 FAKE_GFY_PATH = '{}/{}.webm'.format(FAKE_IMAGE_BASEPATH, FAKE_GFY_ID)
-FAKE_GFY_PATH_THUMB = '{}/{}-small.gif'.format(FAKE_IMAGE_BASEPATH, FAKE_GFY_ID)
+FAKE_GFY_PATH_THUMB = '{}/{}-small.gif'.format(
+    FAKE_IMAGE_BASEPATH, FAKE_GFY_ID)
 
 FAKE_CLIENT_ID = 'myclient'
 FAKE_MASHAPE_KEY = 'mykey'
@@ -273,7 +274,7 @@ class TestDownloadHandler(unittest.TestCase):
         praw_post = mock.MagicMock()
         praw_post.url = FAKE_IMAGE_URL1
         praw_post.subreddit.display_name = FAKE_SUBREDDIT_NAME
-        praw_post.redditor.name = FAKE_USERNAME
+        praw_post.author.name = FAKE_USERNAME
         praw_post.id = FAKE_POST_ID
 
         # _single returns a list with one Image

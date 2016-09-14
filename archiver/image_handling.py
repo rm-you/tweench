@@ -99,7 +99,8 @@ class DownloadHandler(object):
             name = url.split('/')[-1]
             name_thumb = thumb_url.split('/')[-1]
             path = "{base}/{name}".format(base=base_path, name=name)
-            path_thumb = "{base}/{name}".format(base=base_path, name=name_thumb)
+            path_thumb = "{base}/{name}".format(base=base_path,
+                                                name=name_thumb)
             return [self._handle_gfy_data(
                 r1.content, r2.content, path, path_thumb)]
 

@@ -17,3 +17,6 @@ mashape_key = my_mashape
 
 [reddit]
 agent_name = My Reddit Agent 1.0
+
+[persistence]
+driver = archiver.persistence.logger:LoggingPersistence

@@ -5,7 +5,6 @@ from archiver import config
 
 
 class TestConfig(unittest.TestCase):
-
     def setUp(self):
         patcher = mock.patch('archiver.config.ConfigParser.ConfigParser')
         self.mock_config = patcher.start()

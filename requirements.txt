@@ -5,6 +5,7 @@ pillow
 requests
 sqlalchemy
 gfycat
+six
 
 mock
 requests-mock

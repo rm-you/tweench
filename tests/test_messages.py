@@ -12,13 +12,12 @@ FAKE_MESSAGE_ID = '12345'
 
 
 class TestQueueMessage(unittest.TestCase):
-
     def test_str(self):
         message = messages.QueueMessage()
         message.type = 2
         message.body = 3
         expected_str = json.dumps({
-           "type": 2, "body": 3
+            "type": 2, "body": 3
         })
         self.assertEqual(str(message), expected_str)
         message.id = 1
@@ -26,10 +25,9 @@ class TestQueueMessage(unittest.TestCase):
             "id": 1, "type": 2, "body": 3
         })
         self.assertEqual(str(message), expected_str)
-        
+
 
 class TestSubredditMessage(unittest.TestCase):
-
     def test_str(self):
         message = messages.SubredditMessage(FAKE_SUBREDDIT_NAME)
         expected_str = json.dumps({
@@ -57,7 +55,6 @@ class TestSubredditMessage(unittest.TestCase):
 
 
 class TestPostMessage(unittest.TestCase):
-
     def test_str(self):
         message = messages.PostMessage(FAKE_POST_LINK)
         expected_str = json.dumps({
@@ -73,7 +70,7 @@ class TestPostMessage(unittest.TestCase):
 
     def test_finish(self):
         message = messages.PostMessage(FAKE_POST_LINK,
-                                            mid=FAKE_MESSAGE_ID)
+                                       mid=FAKE_MESSAGE_ID)
         mock_queue = mock.Mock(spec=clients.SQSClient)
         message.finish(mock_queue)
         mock_queue.delete_message.assert_called_once_with(message.id)

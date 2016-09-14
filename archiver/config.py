@@ -31,3 +31,6 @@ class Config(object):
 
         # Reddit
         self.REDDIT_AGENT_NAME = config.get('reddit', 'agent_name')
+
+        # Persistence
+        self.PERSISTENCE_DRIVER = config.get('persistence', 'driver')
