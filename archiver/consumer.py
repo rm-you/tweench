@@ -11,11 +11,9 @@ LOG = logging.getLogger(__name__)
 
 
 class Consumer(object):
-    agent = "consumer agent 0.1"
-
     def __init__(self):
         self.conf = config.get_config()
-        self.r = praw.Reddit(self.agent)
+        self.r = praw.Reddit(self.conf.REDDIT_AGENT_NAME)
         self.sqs = clients.sqs_client(self.conf.QUEUE_NAME)
         self.downloader = image_handling.DownloadHandler()
         self._type_map = {
@@ -76,10 +74,10 @@ class Consumer(object):
         praw_subreddit = self.r.get_subreddit(subreddit_name)
         self.persist_subreddit(praw_subreddit)
 
-        hot = praw_subreddit.get_hot(limit=2)
-        # top_day = praw_subreddit.get_top_from_day(limit=100)
-        # top_all = praw_subreddit.get_top_from_all(limit=1000)
-        for post in hot:
+        # posts = praw_subreddit.get_hot(limit=2)
+        # posts = praw_subreddit.get_top_from_day(limit=100)
+        posts = praw_subreddit.get_top_from_all(limit=10)
+        for post in posts:
             m = messages.PostMessage(post.permalink)
             m.enqueue(self.sqs)
 

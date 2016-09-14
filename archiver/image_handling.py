@@ -43,7 +43,7 @@ class DownloadHandler(object):
                  .format(url=praw_post.url))
         path = "{subreddit}/{user_name}/{post_id}".format(
             subreddit=praw_post.subreddit.display_name,
-            user_name=praw_post.redditor.name,
+            user_name=praw_post.author.name,
             post_id=praw_post.id
         )
         images = []

@@ -28,3 +28,6 @@ class Config(object):
         # Imgur
         self.IMGUR_CLIENT_ID = config.get('imgur', 'client_id')
         self.IMGUR_MASHAPE_KEY = config.get('imgur', 'mashape_key')
+
+        # Reddit
+        self.REDDIT_AGENT_NAME = config.get('reddit', 'agent_name')
