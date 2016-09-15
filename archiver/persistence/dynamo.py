@@ -5,7 +5,6 @@ from archiver import clients
 from archiver.persistence import base as base_persistence
 
 SUBREDDIT_TABLE = 'subreddits'
-USER_TABLE = 'users'
 POST_TABLE = 'posts'
 IMAGE_TABLE = 'images'
 
@@ -44,8 +43,27 @@ TABLE_DEFINITIONS = {
             }
         ],
         'ProvisionedThroughput': {
-            'ReadCapacityUnits': 24,
+            'ReadCapacityUnits': 2,
             'WriteCapacityUnits': 2
+        }
+    },
+    IMAGE_TABLE: {
+        'TableName': IMAGE_TABLE,
+        'KeySchema': [
+            {
+                'AttributeName': 'path',
+                'KeyType': 'HASH'  # Partition key
+            }
+        ],
+        'AttributeDefinitions': [
+            {
+                'AttributeName': 'path',
+                'AttributeType': 'S'
+            }
+        ],
+        'ProvisionedThroughput': {
+            'ReadCapacityUnits': 20,
+            'WriteCapacityUnits': 4
         }
     },
 }
@@ -81,7 +99,9 @@ class DynamoPersistence(base_persistence.Persistence):
         pass
 
     def persist_images(self, images):
-        pass
+        with self.tables[IMAGE_TABLE].batch_writer() as batch:
+            for i in images:
+                batch.put_item(Item=i)
 
     def persist_post(self, praw_post):
         # Only check to see if the post existed already
