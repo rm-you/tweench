@@ -13,7 +13,6 @@ from archiver import clients
 from archiver import config
 from archiver import constants
 
-
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class DownloadHandler(object):
         self.gfycat = gfycat.GfycatClient()
 
     def store_images(self, praw_post):
-        LOG.info("Determining type of image URL: {url}"
+        LOG.info(u"Determining type of image URL: {url}"
                  .format(url=praw_post.url))
         images = []
         for regex in self._regexes:
@@ -56,13 +55,13 @@ class DownloadHandler(object):
         return images
 
     def _single(self, image_id):
-        LOG.info("Single imgur page detected: {page}".format(page=image_id))
+        LOG.info(u"Single imgur page detected: {page}".format(page=image_id))
         image_url = self.imgur.get_image(image_id)
         image = self._download_one_imgur(image_url)
         return [image]
 
     def _album(self, album_id):
-        LOG.info("Album detected: {album_id}".format(album_id=album_id))
+        LOG.info(u"Album detected: {album_id}".format(album_id=album_id))
         image_urls = self.imgur.get_album(album_id)
         images = [self._download_one_imgur(url)
                   for url in image_urls]
@@ -70,7 +69,7 @@ class DownloadHandler(object):
 
     def _hashes(self, hashes):
         hashes = hashes.strip(',').split(',')
-        LOG.info("Image hashes detected: {hashes}".format(hashes=hashes))
+        LOG.info(u"Image hashes detected: {hashes}".format(hashes=hashes))
         image_urls = [self.imgur.get_image(image_id) for image_id in hashes]
         images = [self._download_one_imgur(url) for url in image_urls]
         return images
@@ -80,7 +79,7 @@ class DownloadHandler(object):
         path = "{hash}/{name}".format(hash=hashlib.md5(url).hexdigest(),
                                       name=name)
         if not self.s3.object_exists(self.conf.IMAGE_BUCKET_NAME, path):
-            LOG.info("Downloading '{path}': {url}".format(path=path, url=url))
+            LOG.info(u"Downloading '{path}': {url}".format(path=path, url=url))
             r = requests.get(url, stream=False)
             image = self._handle_image_data(r.content, path)
             return {
@@ -91,7 +90,7 @@ class DownloadHandler(object):
             }
 
     def _gfycat(self, gfy_id):
-        LOG.info("Gfycat detected: {gfy_id}".format(gfy_id=gfy_id))
+        LOG.info(u"Gfycat detected: {gfy_id}".format(gfy_id=gfy_id))
         gfy_data = self.gfycat.query_gfy(gfy_id)
         if gfy_data and 'gfyItem' in gfy_data:
             url = gfy_data['gfyItem']['webmUrl']
@@ -109,12 +108,14 @@ class DownloadHandler(object):
             return [{
                 'url': url,
                 'path': path,
-                'dimensions': (gfy_data['gfyItem']['height'],
-                               gfy_data['gfyItem']['width']),
+                'dimensions': {
+                    'height': gfy_data['gfyItem']['height'],
+                    'width': gfy_data['gfyItem']['width']
+                },
             }]
 
     def _external(self, url):
-        LOG.info("Generic image URL detected: {url}".format(url=url))
+        LOG.info(u"Generic image URL detected: {url}".format(url=url))
         name = url.split('/')[-1]
         path = "{hash}/{name}".format(hash=hashlib.md5(url).hexdigest(),
                                       name=name)
@@ -161,7 +162,7 @@ class Image(object):
                        {"ContentType": "image/{}".format(self.type.lower())})
 
     def _thumbnail(self, width=None, height=None):
-        LOG.info("Thumbnailing data at ({} x {})".format(width, height))
+        LOG.info(u"Thumbnailing data at ({} x {})".format(width, height))
         if width:
             wpercent = (width / float(self.pi.size[0]))
             height = int((float(self.pi.size[1]) * float(wpercent)))
@@ -177,14 +178,23 @@ class Image(object):
 
     def get_colors(self):
         if self.pi:
-            LOG.info("Analyzing color data for image...")
-            return colorific.extract_colors(self.pi).colors
-
-        LOG.info("Can't analyze colors, no image data.")
+            LOG.info(u"Analyzing color data for image...")
+            try:
+                colors = colorific.extract_colors(self.pi).colors
+                return [{
+                            'value': colorific.rgb_to_hex(c.value),
+                            'prominence': int(c.prominence * 100)
+                        }
+                        for c in colors]
+            except:
+                LOG.error(u"Exception while analyzing colors for image: {}"
+                          .format(self.path))
+        else:
+            LOG.info(u"Can't analyze colors, no image data.")
 
     def get_dimensions(self):
         if self.pi:
-            LOG.info("Calculating dimensions for image...")
-            return self.pi.size
+            LOG.info(u"Calculating dimensions for image...")
+            return {'height': self.pi.size[0], 'width': self.pi.size[1]}
 
-        LOG.info("Can't calculate dimensions, no image data.")
+        LOG.info(u"Can't calculate dimensions, no image data.")

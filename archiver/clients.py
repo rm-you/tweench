@@ -47,7 +47,7 @@ class S3Client(object):
         self.client = get_session().client('s3')
 
     def upload(self, bucket, path, data, extra_args=None):
-        LOG.info("Uploading file to S3 ({}): {}".format(bucket, path))
+        LOG.info(u"Uploading file to S3 ({}): {}".format(bucket, path))
         self.client.upload_fileobj(
             data, bucket, path, extra_args
         )
@@ -57,7 +57,7 @@ class S3Client(object):
             self.client.head_object(Bucket=bucket, Key=path)
         except boto_exceptions.ClientError:
             return False
-        LOG.info("File already exists in S3: {}".format(path))
+        LOG.info(u"File already exists in S3: {}".format(path))
         return True
 
 

@@ -34,16 +34,16 @@ class Consumer(object):
         resp = self.sqs.get_message()
         if resp:
             if resp.type in self._type_map:
-                LOG.debug("Got {type} message: {message}"
+                LOG.debug(u"Got {type} message: {message}"
                           .format(type=resp.type, message=resp.body))
                 self._type_map[resp.type](resp.body)
                 resp.finish(self.sqs)
             else:
-                LOG.error("Got message of unknown type: {message}"
+                LOG.error(u"Got message of unknown type: {message}"
                           .format(message=resp))
 
     def store_subreddit(self, subreddit_name):
-        LOG.info("Storing subreddit: {subreddit}"
+        LOG.info(u"Storing subreddit: {subreddit}"
                  .format(subreddit=subreddit_name))
         praw_subreddit = self.r.get_subreddit(subreddit_name)
         self.persistence.persist_subreddit(praw_subreddit)
@@ -56,12 +56,12 @@ class Consumer(object):
             m.enqueue(self.sqs)
 
     def store_post(self, post_link):
-        LOG.info("Storing post: {post}".format(post=post_link))
+        LOG.info(u"Storing post: {post}".format(post=post_link))
         praw_post = self.r.get_submission(post_link)
         self.persistence.persist_user(praw_post.author)
         post_existed = self.persistence.persist_post(praw_post)
         if post_existed:
-            LOG.info("Already stored, ignoring post: {post}"
+            LOG.info(u"Already stored, ignoring post: {post}"
                      .format(post=post_link))
             return
 

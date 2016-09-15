@@ -183,6 +183,9 @@ class TestImage(unittest.TestCase):
 
     @mock.patch('archiver.image_handling.colorific')
     def test_get_colors(self, mock_colorific):
+        fake_color = mock.Mock()
+        fake_color.prominence = 0.5
+        mock_colorific.extract_colors().colors = [fake_color]
         # Make our image (and run tests for it)
         image = self._make_image(FAKE_IMAGE_PATH1, FAKE_IMAGE_DATA1)
 
@@ -191,7 +194,21 @@ class TestImage(unittest.TestCase):
 
         # Color extraction is called on our PIL object, and colors returned
         mock_colorific.extract_colors.called_once_with(self.mock_pil)
-        self.assertEqual(colors, mock_colorific.extract_colors().colors)
+        self.assertEqual(colors, [{
+            'prominence': 50, 'value': mock_colorific.rgb_to_hex()
+        }])
+
+    @mock.patch('archiver.image_handling.colorific')
+    def test_get_colors_error(self, mock_colorific):
+        mock_colorific.extract_colors.side_effect = ValueError
+        # Make our image (and run tests for it)
+        image = self._make_image(FAKE_IMAGE_PATH1, FAKE_IMAGE_DATA1)
+
+        # Call get_colors
+        colors = image.get_colors()
+
+        # colors is None because extraction failed
+        self.assertIsNone(colors)
 
     def test_get_dimensions(self):
         # Make our image (and run tests for it)
@@ -204,7 +221,7 @@ class TestImage(unittest.TestCase):
         dimensions = image.get_dimensions()
 
         # The dimensions of the PIL object are returned
-        self.assertEqual(dimensions, (600, 800))
+        self.assertEqual(dimensions, {'height': 600, 'width': 800})
 
 
 class TestDownloadHandler(unittest.TestCase):
@@ -494,6 +511,7 @@ class TestDownloadHandler(unittest.TestCase):
         img_ret = {
             'path': FAKE_GFY_PATH,
             'url': FAKE_GFY_WEBM,
-            'dimensions': (FAKE_GFY_IMAGE_HEIGHT, FAKE_GFY_IMAGE_WIDTH)
+            'dimensions': {'height': FAKE_GFY_IMAGE_HEIGHT,
+                           'width': FAKE_GFY_IMAGE_WIDTH}
         }
         self.assertListEqual(images, [img_ret])
