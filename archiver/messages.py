@@ -14,14 +14,14 @@ class QueueMessage(object):
 
     def enqueue(self, client):
         LOG.debug("Enqueueing message: ({type}) {body}"
-                 .format(type=self.type, body=self.body))
+                  .format(type=self.type, body=self.body))
         client.send_message(str(self))
 
     def finish(self, client):
         if not self.id:
             raise AttributeError("Message has no ID!")
         LOG.debug("Deleting message: ({type}) {body}"
-                 .format(type=self.type, body=self.body))
+                  .format(type=self.type, body=self.body))
         client.delete_message(self.id)
 
     def __str__(self):
@@ -37,7 +37,7 @@ class QueueMessage(object):
 class SubredditMessage(QueueMessage):
     def __init__(self, subreddit_name, mid=None):
         LOG.debug("Created new SubredditMessage: {subreddit}"
-                 .format(subreddit=subreddit_name))
+                  .format(subreddit=subreddit_name))
         self.type = constants.SUBREDDIT_MESSAGE
         self.body = subreddit_name
         self.id = mid
@@ -46,7 +46,7 @@ class SubredditMessage(QueueMessage):
 class PostMessage(QueueMessage):
     def __init__(self, post_link, mid=None):
         LOG.debug("Created new PostMessage: {post}"
-                 .format(post=post_link))
+                  .format(post=post_link))
         self.type = constants.POST_MESSAGE
         self.body = post_link
         self.id = mid

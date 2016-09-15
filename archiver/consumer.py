@@ -35,7 +35,7 @@ class Consumer(object):
         if resp:
             if resp.type in self._type_map:
                 LOG.debug("Got {type} message: {message}"
-                         .format(type=resp.type, message=resp.body))
+                          .format(type=resp.type, message=resp.body))
                 self._type_map[resp.type](resp.body)
                 resp.finish(self.sqs)
             else:

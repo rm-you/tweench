@@ -82,8 +82,13 @@ class DownloadHandler(object):
         if not self.s3.object_exists(self.conf.IMAGE_BUCKET_NAME, path):
             LOG.info("Downloading '{path}': {url}".format(path=path, url=url))
             r = requests.get(url, stream=False)
-            self._handle_image_data(r.content, path)
-        return {'url': url, 'path': path}
+            image = self._handle_image_data(r.content, path)
+            return {
+                'url': url,
+                'path': path,
+                'dimensions': image.get_dimensions(),
+                'colors': image.get_colors()
+            }
 
     def _gfycat(self, gfy_id):
         LOG.info("Gfycat detected: {gfy_id}".format(gfy_id=gfy_id))
@@ -92,7 +97,8 @@ class DownloadHandler(object):
             url = gfy_data['gfyItem']['webmUrl']
             r1 = requests.get(url, stream=False)
 
-            thumb_url = gfy_data['gfyItem']['max2mbGif']
+            thumb_url = (gfy_data['gfyItem'].get('max2mbGif') or
+                         gfy_data['gfyItem'].get('max5mbGif'))
             r2 = requests.get(thumb_url, stream=False)
 
             name = url.split('/')[-1]
@@ -100,7 +106,12 @@ class DownloadHandler(object):
                                           name=name)
             self._handle_image_data(
                 data=r1.content, thumb_data=r2.content, path=path)
-            return [{'url': url, 'path': path}]
+            return [{
+                'url': url,
+                'path': path,
+                'dimensions': (gfy_data['gfyItem']['height'],
+                               gfy_data['gfyItem']['width']),
+            }]
 
     def _external(self, url):
         LOG.info("Generic image URL detected: {url}".format(url=url))
@@ -120,15 +131,19 @@ class DownloadHandler(object):
 
 
 class Image(object):
-    def __init__(self, path, data, thumb_data=None):
+    def __init__(self, path, data, thumb_data=None, content_type=None):
         self.conf = config.get_config()
         self.s3 = clients.s3_client()
         self.path = path
         self.data = data
         self.thumb_data = thumb_data
         io_data = io.BytesIO(self.data)
-        self.pi = PILImage.open(io_data)
-        self.type = self.pi.format
+        try:
+            self.pi = PILImage.open(io_data)
+            self.type = content_type or self.pi.format
+        except:
+            self.pi = None
+            self.type = content_type
 
     def upload(self):
         io_data = io.BytesIO(self.data)
@@ -161,10 +176,15 @@ class Image(object):
         return thumb_bytes
 
     def get_colors(self):
-        LOG.info("Analyzing color data for image...")
-        color_data = colorific.extract_colors(self.pi)
-        return color_data.colors
+        if self.pi:
+            LOG.info("Analyzing color data for image...")
+            return colorific.extract_colors(self.pi).colors
+
+        LOG.info("Can't analyze colors, no image data.")
 
     def get_dimensions(self):
-        LOG.info("Calculating dimensions for image...")
-        return self.pi.size
+        if self.pi:
+            LOG.info("Calculating dimensions for image...")
+            return self.pi.size
+
+        LOG.info("Can't calculate dimensions, no image data.")

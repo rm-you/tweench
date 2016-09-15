@@ -30,6 +30,8 @@ FAKE_GFY_WEBM = 'https://fat.gfycat.com/{}'.format(FAKE_GFY_WEBM_NAME)
 FAKE_GFY_THUMB = 'https://thumbs.gfycat.com/{}-small.gif'.format(FAKE_GFY_ID)
 FAKE_GFY_WEBM_MD5 = hashlib.md5(FAKE_GFY_WEBM).hexdigest()
 FAKE_GFY_PATH = '{}/{}'.format(FAKE_GFY_WEBM_MD5, FAKE_GFY_WEBM_NAME)
+FAKE_GFY_IMAGE_WIDTH = 1024
+FAKE_GFY_IMAGE_HEIGHT = 768
 
 FAKE_CLIENT_ID = 'myclient'
 FAKE_MASHAPE_KEY = 'mykey'
@@ -51,9 +53,9 @@ class TestImage(unittest.TestCase):
         self.mock_s3 = patcher.start()
         self.addCleanup(patcher.stop)
 
-        patcher = mock.patch('archiver.image_handling.PILImage')
-        self.mock_pil = patcher.start()
-        self.addCleanup(patcher.stop)
+        self.pil_patcher = mock.patch('archiver.image_handling.PILImage')
+        self.mock_pil = self.pil_patcher.start()
+        self.addCleanup(self.pil_patcher.stop)
 
         patcher = mock.patch('archiver.image_handling.io.BytesIO')
         self.mock_bytesio = patcher.start()
@@ -77,6 +79,17 @@ class TestImage(unittest.TestCase):
         self.mock_bytesio.reset_mock()
 
         return image
+
+    def test_bad_image_data(self):
+        self.pil_patcher.stop()
+        image = image_handling.Image(FAKE_IMAGE_PATH1, FAKE_IMAGE_DATA1)
+        self.pil_patcher.start()
+
+        colors = image.get_colors()
+        dimensions = image.get_dimensions()
+
+        self.assertIsNone(colors)
+        self.assertIsNone(dimensions)
 
     def test_upload(self):
         # Make our image (and run tests for it)
@@ -284,7 +297,12 @@ class TestDownloadHandler(unittest.TestCase):
             FAKE_THUMBNAIL_SIZE)
 
         # Returned image list is the path/url of our image
-        img_ret = {'path': FAKE_IMAGE_PATH1, 'url': FAKE_IMAGE_URL1}
+        img_ret = {
+            'path': FAKE_IMAGE_PATH1,
+            'url': FAKE_IMAGE_URL1,
+            'dimensions': mock_image().get_dimensions(),
+            'colors': mock_image().get_colors()
+        }
         self.assertListEqual(images, [img_ret])
 
     @mock.patch('archiver.image_handling.Image')
@@ -332,8 +350,18 @@ class TestDownloadHandler(unittest.TestCase):
         ])
 
         # Returned image list is the path/url of the two images
-        img1_ret = {'path': FAKE_IMAGE_PATH1, 'url': FAKE_IMAGE_URL1}
-        img2_ret = {'path': FAKE_IMAGE_PATH2, 'url': FAKE_IMAGE_URL2}
+        img1_ret = {
+            'path': FAKE_IMAGE_PATH1,
+            'url': FAKE_IMAGE_URL1,
+            'dimensions': mock_image().get_dimensions(),
+            'colors': mock_image().get_colors()
+        }
+        img2_ret = {
+            'path': FAKE_IMAGE_PATH2,
+            'url': FAKE_IMAGE_URL2,
+            'dimensions': mock_image().get_dimensions(),
+            'colors': mock_image().get_colors()
+        }
         self.assertListEqual(images, [img1_ret, img2_ret])
 
     @mock.patch('archiver.image_handling.Image')
@@ -384,8 +412,18 @@ class TestDownloadHandler(unittest.TestCase):
         ])
 
         # Returned image list is the path/url of the two images
-        img1_ret = {'path': FAKE_IMAGE_PATH1, 'url': FAKE_IMAGE_URL1}
-        img2_ret = {'path': FAKE_IMAGE_PATH2, 'url': FAKE_IMAGE_URL2}
+        img1_ret = {
+            'path': FAKE_IMAGE_PATH1,
+            'url': FAKE_IMAGE_URL1,
+            'dimensions': mock_image().get_dimensions(),
+            'colors': mock_image().get_colors()
+        }
+        img2_ret = {
+            'path': FAKE_IMAGE_PATH2,
+            'url': FAKE_IMAGE_URL2,
+            'dimensions': mock_image().get_dimensions(),
+            'colors': mock_image().get_colors()
+        }
         self.assertListEqual(images, [img1_ret, img2_ret])
 
     @mock.patch('archiver.image_handling.Image')
@@ -421,7 +459,9 @@ class TestDownloadHandler(unittest.TestCase):
         self.mock_gfycat().query_gfy.return_value = {
             'gfyItem': {
                 'webmUrl': FAKE_GFY_WEBM,
-                'max2mbGif': FAKE_GFY_THUMB
+                'max2mbGif': FAKE_GFY_THUMB,
+                'width': FAKE_GFY_IMAGE_WIDTH,
+                'height': FAKE_GFY_IMAGE_HEIGHT
             }
         }
 
@@ -451,5 +491,9 @@ class TestDownloadHandler(unittest.TestCase):
         mock_image().upload_thumbnail.assert_called_once()
 
         # Returned image list is the path/url of our image
-        img_ret = {'path': FAKE_GFY_PATH, 'url': FAKE_GFY_WEBM}
+        img_ret = {
+            'path': FAKE_GFY_PATH,
+            'url': FAKE_GFY_WEBM,
+            'dimensions': (FAKE_GFY_IMAGE_HEIGHT, FAKE_GFY_IMAGE_WIDTH)
+        }
         self.assertListEqual(images, [img_ret])
