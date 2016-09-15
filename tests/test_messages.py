@@ -1,6 +1,7 @@
-import mock
-import unittest
 import json
+import unittest
+
+import mock
 
 from archiver import constants
 from archiver import messages

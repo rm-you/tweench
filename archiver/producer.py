@@ -1,8 +1,8 @@
 import logging
 
-from archiver import messages
 from archiver import clients
 from archiver import config
+from archiver import messages
 
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(__name__)

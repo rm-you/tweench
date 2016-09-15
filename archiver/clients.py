@@ -1,9 +1,16 @@
 import json
+import logging
+
 from boto3 import session
-from archiver import messages
-from archiver import constants
-from archiver import config
+from botocore import exceptions as boto_exceptions
 import requests
+
+from archiver import config
+from archiver import constants
+from archiver import messages
+
+logging.basicConfig(level=logging.INFO)
+LOG = logging.getLogger(__name__)
 
 _CLIENTS = {
     'session': None,
@@ -40,9 +47,18 @@ class S3Client(object):
         self.client = get_session().client('s3')
 
     def upload(self, bucket, path, data, extra_args=None):
+        LOG.info("Uploading file to S3 ({}): {}".format(bucket, path))
         self.client.upload_fileobj(
             data, bucket, path, extra_args
         )
+
+    def object_exists(self, bucket, path):
+        try:
+            self.client.head_object(Bucket=bucket, Key=path)
+        except boto_exceptions.ClientError:
+            return False
+        LOG.info("File already exists in S3: {}".format(path))
+        return True
 
 
 class SQSClient(object):

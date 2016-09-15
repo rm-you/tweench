@@ -4,10 +4,10 @@ import logging
 import praw
 
 from archiver import clients
-from archiver import constants
 from archiver import config
-from archiver import messages
+from archiver import constants
 from archiver import image_handling
+from archiver import messages
 
 logging.basicConfig(level=logging.INFO)
 LOG = logging.getLogger(__name__)
@@ -34,7 +34,8 @@ class Consumer(object):
         resp = self.sqs.get_message()
         if resp:
             if resp.type in self._type_map:
-                LOG.info("Got message: {message}".format(message=resp))
+                LOG.debug("Got {type} message: {message}"
+                         .format(type=resp.type, message=resp.body))
                 self._type_map[resp.type](resp.body)
                 resp.finish(self.sqs)
             else:
@@ -55,13 +56,16 @@ class Consumer(object):
             m.enqueue(self.sqs)
 
     def store_post(self, post_link):
-        LOG.info("Storing post: {post}"
-                 .format(post=post_link))
+        LOG.info("Storing post: {post}".format(post=post_link))
         praw_post = self.r.get_submission(post_link)
         self.persistence.persist_user(praw_post.author)
-        self.persistence.persist_post(praw_post)
+        post_existed = self.persistence.persist_post(praw_post)
+        if post_existed:
+            LOG.info("Already stored, ignoring post: {post}"
+                     .format(post=post_link))
+            return
 
         images = self.downloader.store_images(praw_post)
         if images:
             self.persistence.persist_images(images)
-        self.persistence.finalize_post(praw_post)
+        self.persistence.finalize_post(praw_post, images)

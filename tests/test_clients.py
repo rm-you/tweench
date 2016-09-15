@@ -1,6 +1,8 @@
 import json
-import mock
 import unittest
+
+from botocore import exceptions as boto_exceptions
+import mock
 import requests_mock
 
 from archiver import clients
@@ -119,6 +121,30 @@ class TestS3Client(unittest.TestCase):
         self.mock_client().upload_fileobj.assert_called_once_with(
             FAKE_DATA, FAKE_BUCKET_NAME, FAKE_PATH, FAKE_EXTRA_ARGS
         )
+
+    def test_object_exists_true(self):
+        s3 = self._make_s3client()
+
+        exists = s3.object_exists(FAKE_BUCKET_NAME, FAKE_PATH)
+
+        self.mock_client().head_object.assert_called_once_with(
+            Bucket=FAKE_BUCKET_NAME, Key=FAKE_PATH
+        )
+        self.assertTrue(exists)
+
+    def test_object_exists_false(self):
+        s3 = self._make_s3client()
+        self.mock_client().head_object.side_effect = (
+            boto_exceptions.ClientError(
+                {'Error': {'Code': 403, 'Message': 'Forbidden'}}, 'HeadObject')
+        )
+
+        exists = s3.object_exists(FAKE_BUCKET_NAME, FAKE_PATH)
+
+        self.mock_client().head_object.assert_called_once_with(
+            Bucket=FAKE_BUCKET_NAME, Key=FAKE_PATH
+        )
+        self.assertFalse(exists)
 
 
 class TestSQSClient(unittest.TestCase):

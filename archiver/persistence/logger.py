@@ -10,25 +10,6 @@ class LoggingPersistence(base_persistence.Persistence):
     def __init__(self):
         LOG.info("Initialized LOGGING persistence engine.")
 
-    def finalize_post(self, praw_post):
-        LOG.info("Marking post as retrieved: {post}"
-                 .format(post=praw_post.permalink))
-
-    def persist_images(self, images):
-        LOG.info("Got {num} images, persisting them."
-                 .format(num=len(images)))
-
-    def persist_post(self, praw_post):
-        data = {
-            'id': praw_post.id,
-            'title': praw_post.title,
-            'permalink': praw_post.permalink,
-            'url': praw_post.url,
-            'retrieved': False
-        }
-        LOG.info("Persisting post to DB: {post}"
-                 .format(post=data))
-
     def persist_subreddit(self, praw_subreddit):
         data = {
             'id': praw_subreddit.id,
@@ -45,3 +26,22 @@ class LoggingPersistence(base_persistence.Persistence):
         }
         LOG.info("Persisting user to DB: {user}"
                  .format(user=data))
+
+    def persist_images(self, images):
+        LOG.info("Got {num} images, persisting them."
+                 .format(num=len(images)))
+
+    def persist_post(self, praw_post):
+        data = {
+            'id': praw_post.id,
+            'title': praw_post.title,
+            'permalink': praw_post.permalink,
+            'url': praw_post.url,
+            'retrieved': False
+        }
+        LOG.info("Persisting post to DB: {post}"
+                 .format(post=data))
+
+    def finalize_post(self, praw_post, images):
+        LOG.info("Marking post as retrieved: {post}"
+                 .format(post=praw_post.permalink))

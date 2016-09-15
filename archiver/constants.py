@@ -1,5 +1,5 @@
-SUBREDDIT_MESSAGE = u'subreddit'
-POST_MESSAGE = u'post'
+SUBREDDIT_MESSAGE = u'STORE_SUBREDDIT'
+POST_MESSAGE = u'STORE_POST'
 
 # Regexes
 IMGUR_ALBUM = '^https?://(?:m\.|www\.)?imgur\.com/a/([a-zA-Z0-9]+)'

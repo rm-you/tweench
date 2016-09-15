@@ -23,5 +23,5 @@ class Persistence(object):
         pass
 
     @abc.abstractmethod
-    def finalize_post(self, praw_post):
+    def finalize_post(self, praw_post, images):
         pass
