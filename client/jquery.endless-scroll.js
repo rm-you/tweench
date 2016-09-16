@@ -208,15 +208,15 @@ EndlessScroll = (function() {
     switch (this.scrollDirection) {
       case 'next':
         margin = innerWrap.height() - $(target).height() <= $(target).scrollTop() + this.options.inflowPixels;
-        if (margin) {
-          target.scrollTop(innerWrap.height() - $(target).height() - this.options.inflowPixels);
-        }
+        // if (margin) {
+        //   target.scrollTop(innerWrap.height() - $(target).height() - this.options.inflowPixels);
+        // }
         break;
       case 'prev':
         margin = $(target).scrollTop() <= this.options.inflowPixels;
-        if (margin) {
-          target.scrollTop(this.options.inflowPixels);
-        }
+        // if (margin) {
+        //   target.scrollTop(this.options.inflowPixels);
+        // }
     }
     return margin;
   };
