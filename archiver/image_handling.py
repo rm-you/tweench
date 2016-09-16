@@ -1,6 +1,5 @@
 import collections
 import hashlib
-import importlib
 import io
 import logging
 import re
@@ -22,12 +21,7 @@ class DownloadHandler(object):
     def __init__(self):
         self.conf = config.get_config()
         self.s3 = clients.s3_client()
-        persistence_module, persistence_class = (
-            self.conf.PERSISTENCE_DRIVER.split(':')
-        )
-        persistence_module = importlib.import_module(persistence_module)
-        persistence_class = getattr(persistence_module, persistence_class)
-        self.persistence = persistence_class()
+        self.persistence = clients.persistence_client()
 
         self._regexes = collections.OrderedDict([
             (re.compile(constants.IMGUR_ALBUM, re.IGNORECASE), self._album),

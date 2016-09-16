@@ -12,10 +12,10 @@ class Producer(object):
     def __init__(self):
         self.conf = config.get_config()
 
-    def add_subreddit(self, subreddit_name):
-        LOG.info("Beginning to archive subreddit: {subreddit}"
-                 .format(subreddit=subreddit_name))
-        m = messages.SubredditMessage(subreddit_name)
+    def add_subreddit(self, subreddit_name, query_type, num):
+        LOG.info("Beginning to archive {num} {type} from subreddit: {sub}"
+                 .format(type=query_type, sub=subreddit_name, num=num))
+        m = messages.SubredditMessage(subreddit_name, query_type, num)
         m.enqueue(clients.sqs_client(self.conf.QUEUE_NAME))
 
     def has_subreddit(self, subreddit_name):

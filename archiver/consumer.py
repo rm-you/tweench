@@ -1,4 +1,3 @@
-import importlib
 import logging
 
 import praw
@@ -20,37 +19,31 @@ class Consumer(object):
         self.sqs = clients.sqs_client(self.conf.QUEUE_NAME)
         self.downloader = image_handling.DownloadHandler()
         self._type_map = {
-            constants.SUBREDDIT_MESSAGE: self.store_subreddit,
-            constants.POST_MESSAGE: self.store_post
+            constants.MESSAGE_SUBREDDIT: self.store_subreddit,
+            constants.MESSAGE_POST: self.store_post
         }
-        persistence_module, persistence_class = (
-            self.conf.PERSISTENCE_DRIVER.split(':')
-        )
-        persistence_module = importlib.import_module(persistence_module)
-        persistence_class = getattr(persistence_module, persistence_class)
-        self.persistence = persistence_class()
+        self.persistence = clients.persistence_client()
 
     def run_once(self):
         resp = self.sqs.get_message()
         if resp:
             if resp.type in self._type_map:
-                LOG.debug(u"Got {type} message: {message}"
-                          .format(type=resp.type, message=resp.body))
-                self._type_map[resp.type](resp.body)
+                LOG.debug(u"Got message: {msg}"
+                          .format(msg=str(resp)))
+                self._type_map[resp.type](**resp.body)
                 resp.finish(self.sqs)
             else:
                 LOG.error(u"Got message of unknown type: {message}"
                           .format(message=resp))
 
-    def store_subreddit(self, subreddit_name):
+    def store_subreddit(self, subreddit_name, query_type, query_num):
         LOG.info(u"Storing subreddit: {subreddit}"
                  .format(subreddit=subreddit_name))
         praw_subreddit = self.r.get_subreddit(subreddit_name)
         self.persistence.persist_subreddit(praw_subreddit)
 
-        # posts = praw_subreddit.get_hot(limit=2)
-        # posts = praw_subreddit.get_top_from_day(limit=100)
-        posts = praw_subreddit.get_top_from_all(limit=10)
+        func = getattr(praw_subreddit, query_type)
+        posts = func(limit=query_num)
         for post in posts:
             m = messages.PostMessage(post.permalink)
             m.enqueue(self.sqs)

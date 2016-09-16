@@ -234,7 +234,7 @@ class TestDownloadHandler(unittest.TestCase):
         self.mock_s3 = patcher.start()
         self.addCleanup(patcher.stop)
 
-        patcher = mock.patch('archiver.persistence.logger.LoggingPersistence')
+        patcher = mock.patch('archiver.clients.persistence_client')
         self.mock_persistence = patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -250,8 +250,6 @@ class TestDownloadHandler(unittest.TestCase):
         self.mock_config().IMGUR_MASHAPE_KEY = FAKE_MASHAPE_KEY
         self.mock_config().THUMBNAIL_SIZE = FAKE_THUMBNAIL_SIZE
         self.mock_config().IMAGE_BUCKET_NAME = FAKE_IMAGE_BUCKET_NAME
-        self.mock_config().PERSISTENCE_DRIVER = (
-            "archiver.persistence.logger:LoggingPersistence")
 
         self.mock_s3().object_exists.return_value = False
 
@@ -283,7 +281,6 @@ class TestDownloadHandler(unittest.TestCase):
 
         self.assertEqual(mock_req.call_count, 0)
         self.assertEqual(image, img1_ret)
-
 
     @mock.patch.object(image_handling.DownloadHandler, '_single')
     def test_store_images(self, mock_single):
@@ -534,7 +531,9 @@ class TestDownloadHandler(unittest.TestCase):
         img_ret = {
             'path': FAKE_GFY_PATH,
             'url': FAKE_GFY_WEBM,
-            'dimensions': {'height': FAKE_GFY_IMAGE_HEIGHT,
-                           'width': FAKE_GFY_IMAGE_WIDTH}
+            'dimensions': {
+                'height': FAKE_GFY_IMAGE_HEIGHT,
+                'width': FAKE_GFY_IMAGE_WIDTH
+                }
         }
         self.assertListEqual(images, [img_ret])

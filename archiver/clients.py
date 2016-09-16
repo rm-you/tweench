@@ -1,3 +1,4 @@
+import importlib
 import json
 import logging
 
@@ -15,7 +16,8 @@ LOG = logging.getLogger(__name__)
 _CLIENTS = {
     'session': None,
     'sqs': {},
-    's3': None
+    's3': None,
+    'persistence': None
 }
 
 
@@ -31,9 +33,21 @@ def s3_client():
     return _CLIENTS['s3']
 
 
+def persistence_client():
+    if not _CLIENTS['persistence']:
+        conf = config.get_config()
+        persistence_module, persistence_class = (
+            conf.PERSISTENCE_DRIVER.split(':')
+        )
+        persistence_module = importlib.import_module(persistence_module)
+        persistence_class = getattr(persistence_module, persistence_class)
+        _CLIENTS['persistence'] = persistence_class()
+    return _CLIENTS['persistence']
+
+
 def get_session():
-    conf = config.get_config()
     if not _CLIENTS['session']:
+        conf = config.get_config()
         _CLIENTS['session'] = session.Session(
             aws_access_key_id=conf.AWS_ACCESS_KEY_ID,
             aws_secret_access_key=conf.AWS_ACCESS_KEY_SECRET,
@@ -63,8 +77,8 @@ class S3Client(object):
 
 class SQSClient(object):
     _message_types = {
-        constants.SUBREDDIT_MESSAGE: messages.SubredditMessage,
-        constants.POST_MESSAGE: messages.PostMessage
+        constants.MESSAGE_SUBREDDIT: messages.SubredditMessage,
+        constants.MESSAGE_POST: messages.PostMessage
     }
 
     def __init__(self, queue_name):
@@ -93,8 +107,8 @@ class SQSClient(object):
             m = resp.get('Messages')[0]
             body = json.loads(m['Body'])
             receipt_handle = m['ReceiptHandle']
-            m_obj = self._message_types[body.get('type')](body.get('body'),
-                                                          receipt_handle)
+            m_obj = self._message_types[body.get('type')](
+                mid=receipt_handle, **body.get('body'))
             return m_obj
         return None
 

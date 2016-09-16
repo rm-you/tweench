@@ -1,5 +1,11 @@
-SUBREDDIT_MESSAGE = u'STORE_SUBREDDIT'
-POST_MESSAGE = u'STORE_POST'
+# Message types
+MESSAGE_SUBREDDIT = u'STORE_SUBREDDIT'
+MESSAGE_POST = u'STORE_POST'
+
+# Query types
+QUERY_TOP_ALL_TIME = 'get_top_from_all'
+QUERY_TOP_TODAY = 'get_top_from_day'
+QUERY_HOT = 'get_hot'
 
 # Regexes
 IMGUR_ALBUM = '^https?://(?:m\.|www\.)?imgur\.com/a/([a-zA-Z0-9]+)'

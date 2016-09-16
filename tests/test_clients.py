@@ -11,8 +11,14 @@ from archiver import messages
 
 FAKE_QUEUE_NAME1 = 'myqueue1'
 FAKE_QUEUE_NAME2 = 'myqueue2'
-FAKE_MESSAGE = 'mymessage'
-FAKE_MESSAGE_TYPE = constants.SUBREDDIT_MESSAGE
+FAKE_SUBREDDIT_NAME = 'mysubreddit'
+FAKE_MESSAGE_TYPE = constants.MESSAGE_SUBREDDIT
+FAKE_QUERY_NUM = 10
+FAKE_MESSAGE = {
+    "subreddit_name": FAKE_SUBREDDIT_NAME,
+    "query_type": constants.QUERY_TOP_ALL_TIME,
+    "query_num": FAKE_QUERY_NUM
+}
 FAKE_RECEIPT_ID = '45678'
 FAKE_WAIT_TIME = 17
 
@@ -34,7 +40,7 @@ FAKE_IMAGE_URL2 = 'http://i.imgur.com/{}'.format(FAKE_IMAGE_NAME2)
 
 class TestClientMethods(unittest.TestCase):
     def setUp(self):
-        patcher = mock.patch('archiver.clients.config')
+        patcher = mock.patch('archiver.clients.config.get_config')
         self.mock_config = patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -67,6 +73,17 @@ class TestClientMethods(unittest.TestCase):
         mock_session().client.assert_has_calls(
             [mock.call('s3')], any_order=True)
 
+    def test_persistence_client(self):
+        self.mock_config().PERSISTENCE_DRIVER = (
+            "archiver.persistence.logger:LoggingPersistence")
+
+        # Get two persistence clients
+        persist_1 = clients.persistence_client()
+        persist_2 = clients.persistence_client()
+
+        # Both should be the same object
+        self.assertTrue(persist_1 is persist_2)
+
     @mock.patch('archiver.clients.session.Session')
     def test_get_session(self, mock_boto_session):
         # Get the session twice
@@ -77,11 +94,10 @@ class TestClientMethods(unittest.TestCase):
         self.assertTrue(session1 is session2)
 
         # Boto should have one session request
-        config = self.mock_config.get_config()
         mock_boto_session.assert_called_with(
-            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=config.AWS_ACCESS_KEY_SECRET,
-            region_name=config.AWS_REGION
+            aws_access_key_id=self.mock_config().AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=self.mock_config().AWS_ACCESS_KEY_SECRET,
+            region_name=self.mock_config().AWS_REGION
         )
 
 
@@ -201,7 +217,7 @@ class TestSQSClient(unittest.TestCase):
         )
         self.assertIsInstance(resp, messages.SubredditMessage)
         self.assertEqual(resp.body, FAKE_MESSAGE)
-        self.assertEqual(resp.type, constants.SUBREDDIT_MESSAGE)
+        self.assertEqual(resp.type, constants.MESSAGE_SUBREDDIT)
         self.assertEqual(resp.id, FAKE_RECEIPT_ID)
 
     def test_get_message_timeout(self):
@@ -246,9 +262,13 @@ class TestImgurClient(unittest.TestCase):
 
     @requests_mock.mock()
     def test_get_album(self, mock_req):
-        fake_content = {'data': {'images': [
-            {'link': FAKE_IMAGE_URL1}, {'link': FAKE_IMAGE_URL2}
-        ]}}
+        fake_content = {
+            'data': {
+                'images': [
+                    {'link': FAKE_IMAGE_URL1}, {'link': FAKE_IMAGE_URL2}
+                ]
+            }
+        }
         mock_req.get(self.expected_album_url, json=fake_content)
 
         album = self.imgur_client.get_album(FAKE_ALBUM_ID)
