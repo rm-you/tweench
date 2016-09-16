@@ -1,0 +1,7 @@
+AWS.config.update({
+    accessKeyId: 'my_access_key_id',
+    secretAccessKey: 'my_secret_access_key'
+});
+AWS.config.region = 'us-east-1';
+base_path = "https://s3.amazonaws.com/my_bucket/";
+base_thumb_path = "https://s3.amazonaws.com/my_thumb_bucket/";
