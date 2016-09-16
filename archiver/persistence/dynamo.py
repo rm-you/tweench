@@ -121,7 +121,7 @@ class DynamoPersistence(base_persistence.Persistence):
             'title': praw_post.title,
             'permalink': praw_post.permalink,
             'url': praw_post.url,
-            'user': praw_post.author.name,
+            'user': praw_post.author.name if praw_post.author else None,
             'images': images,
             'nsfw': praw_post.over_18,
             'created': str(created),

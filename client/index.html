@@ -142,6 +142,13 @@
                 var params = {
                     TableName: "posts",
                     Limit: postLoadCount,
+                    FilterExpression: "#sr = :name",
+                    ExpressionAttributeNames: {
+                        "#sr": "subreddit"
+                    },
+                    ExpressionAttributeValues: {
+                        ":name": "FoodPorn"
+                    },
                     ExclusiveStartKey: lastEvaluatedKey
                 };
                 docClient.scan(params, tableScanCallback);

@@ -2,4 +2,7 @@ from archiver import consumer
 
 c = consumer.Consumer()
 while True:
-    c.run_once()
+    try:
+        c.run_once()
+    except Exception as e:
+        print(e)
