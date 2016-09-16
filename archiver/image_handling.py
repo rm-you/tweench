@@ -1,5 +1,6 @@
 import collections
 import hashlib
+import importlib
 import io
 import logging
 import re
@@ -21,6 +22,13 @@ class DownloadHandler(object):
     def __init__(self):
         self.conf = config.get_config()
         self.s3 = clients.s3_client()
+        persistence_module, persistence_class = (
+            self.conf.PERSISTENCE_DRIVER.split(':')
+        )
+        persistence_module = importlib.import_module(persistence_module)
+        persistence_class = getattr(persistence_module, persistence_class)
+        self.persistence = persistence_class()
+
         self._regexes = collections.OrderedDict([
             (re.compile(constants.IMGUR_ALBUM, re.IGNORECASE), self._album),
             (re.compile(constants.IMGUR_GALLERY, re.IGNORECASE), self._album),
@@ -58,36 +66,41 @@ class DownloadHandler(object):
         LOG.info(u"Single imgur page detected: {page}".format(page=image_id))
         image_url = self.imgur.get_image(image_id)
         image = self._download_one_imgur(image_url)
-        return [image]
+        return [image] if image is not None else []
 
     def _album(self, album_id):
         LOG.info(u"Album detected: {album_id}".format(album_id=album_id))
         image_urls = self.imgur.get_album(album_id)
         images = [self._download_one_imgur(url)
-                  for url in image_urls]
+                  for url in image_urls if url is not None]
         return images
 
     def _hashes(self, hashes):
         hashes = hashes.strip(',').split(',')
         LOG.info(u"Image hashes detected: {hashes}".format(hashes=hashes))
         image_urls = [self.imgur.get_image(image_id) for image_id in hashes]
-        images = [self._download_one_imgur(url) for url in image_urls]
+        images = [self._download_one_imgur(url)
+                  for url in image_urls if url is not None]
         return images
 
     def _download_one_imgur(self, url):
         name = url.split('/')[-1]
         path = "{hash}/{name}".format(hash=hashlib.md5(url).hexdigest(),
                                       name=name)
-        if not self.s3.object_exists(self.conf.IMAGE_BUCKET_NAME, path):
-            LOG.info(u"Downloading '{path}': {url}".format(path=path, url=url))
-            r = requests.get(url, stream=False)
-            image = self._handle_image_data(r.content, path)
-            return {
-                'url': url,
-                'path': path,
-                'dimensions': image.get_dimensions(),
-                'colors': image.get_colors()
-            }
+        object_in_s3 = self.s3.object_exists(self.conf.IMAGE_BUCKET_NAME, path)
+        object_in_db = self.persistence.get_image(path)
+        if object_in_db and object_in_s3:
+            return object_in_db
+
+        LOG.info(u"Downloading '{path}': {url}".format(path=path, url=url))
+        r = requests.get(url, stream=False)
+        image = self._handle_image_data(r.content, path)
+        return {
+            'url': url,
+            'path': path,
+            'dimensions': image.get_dimensions(),
+            'colors': image.get_colors()
+        }
 
     def _gfycat(self, gfy_id):
         LOG.info(u"Gfycat detected: {gfy_id}".format(gfy_id=gfy_id))

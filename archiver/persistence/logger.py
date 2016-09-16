@@ -45,3 +45,7 @@ class LoggingPersistence(base_persistence.Persistence):
     def finalize_post(self, praw_post, images):
         LOG.info("Marking post as retrieved: {post}"
                  .format(post=praw_post.permalink))
+
+    def get_image(self, image_path):
+        LOG.info("Checking if image exists in persistence layer, returning "
+                 "None for compatibility: {path}".format(path=image_path))

@@ -16,3 +16,6 @@ class SqlPersistence(base_persistence.Persistence):
 
     def finalize_post(self, praw_post, images):
         raise NotImplementedError()
+
+    def exists_image(self, image_path):
+        raise NotImplementedError()

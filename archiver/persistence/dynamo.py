@@ -110,6 +110,10 @@ class DynamoPersistence(base_persistence.Persistence):
             return True
         return False
 
+    def get_image(self, image_path):
+        image = self.tables[IMAGE_TABLE].get_item(Key={'path': image_path})
+        return image.get('Item')
+
     def finalize_post(self, praw_post, images):
         created = datetime.datetime.utcfromtimestamp(praw_post.created_utc)
         data = {

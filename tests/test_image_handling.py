@@ -234,6 +234,10 @@ class TestDownloadHandler(unittest.TestCase):
         self.mock_s3 = patcher.start()
         self.addCleanup(patcher.stop)
 
+        patcher = mock.patch('archiver.persistence.logger.LoggingPersistence')
+        self.mock_persistence = patcher.start()
+        self.addCleanup(patcher.stop)
+
         patcher = mock.patch('archiver.clients.MashapeImgurClient')
         self.mock_imgur = patcher.start()
         self.addCleanup(patcher.stop)
@@ -246,6 +250,8 @@ class TestDownloadHandler(unittest.TestCase):
         self.mock_config().IMGUR_MASHAPE_KEY = FAKE_MASHAPE_KEY
         self.mock_config().THUMBNAIL_SIZE = FAKE_THUMBNAIL_SIZE
         self.mock_config().IMAGE_BUCKET_NAME = FAKE_IMAGE_BUCKET_NAME
+        self.mock_config().PERSISTENCE_DRIVER = (
+            "archiver.persistence.logger:LoggingPersistence")
 
         self.mock_s3().object_exists.return_value = False
 
@@ -261,6 +267,23 @@ class TestDownloadHandler(unittest.TestCase):
 
         # ImgurClient is used
         mock_imgur.assert_called_once_with(FAKE_CLIENT_ID)
+
+    @mock.patch('archiver.image_handling.Image')
+    @requests_mock.mock()
+    def test__download_one_imgur_object_exists(self, mock_image, mock_req):
+        img1_ret = {
+            'path': FAKE_IMAGE_PATH1,
+            'url': FAKE_IMAGE_URL1,
+            'dimensions': mock_image().get_dimensions(),
+            'colors': mock_image().get_colors()
+        }
+        self.mock_persistence().get_image.return_value = img1_ret
+        self.mock_s3().object_exists.return_value = True
+        image = self.dh._download_one_imgur(FAKE_IMAGE_URL1)
+
+        self.assertEqual(mock_req.call_count, 0)
+        self.assertEqual(image, img1_ret)
+
 
     @mock.patch.object(image_handling.DownloadHandler, '_single')
     def test_store_images(self, mock_single):
