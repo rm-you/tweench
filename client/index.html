@@ -82,13 +82,13 @@
                         break;
                     }
                 }
-                if (elements.length < maxImageCount) {
-                    getMoreImages(-1);
-                }
                 var $container = $('#container');
                 $container.imagesLoaded(function () {
                     $container.masonry('appended', elements, true);
                 });
+                if ($container[0].children.length < minTotalImageCount) {
+                    getMoreImages(-1);
+                }
             }
         }
 
@@ -147,7 +147,7 @@
                         "#sr": "subreddit"
                     },
                     ExpressionAttributeValues: {
-                        ":name": "FoodPorn"
+                        ":name": subredditToShow
                     },
                     ExclusiveStartKey: lastEvaluatedKey
                 };
@@ -164,8 +164,11 @@
     <script>
         var docClient = new AWS.DynamoDB.DocumentClient();
         var lastEvaluatedKey = -1;
-        var maxImageCount = 30;
-        var postLoadCount = 5;
+        var maxImageCount = 50;
+        var minTotalImageCount = 20;
+        var postLoadCount = 50;
+        var subredditToShow = "FoodPorn";
+
         getMoreImages(-1);
 
         $(document).ready(function () {
