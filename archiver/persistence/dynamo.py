@@ -124,6 +124,7 @@ class DynamoPersistence(base_persistence.Persistence):
             'user': praw_post.author.name,
             'images': images,
             'nsfw': praw_post.over_18,
-            'created': str(created)
+            'created': str(created),
+            'subreddit': praw_post.subreddit.display_name
         }
         self.tables[POST_TABLE].put_item(Item=data)
