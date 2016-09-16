@@ -43,7 +43,7 @@ TABLE_DEFINITIONS = {
             }
         ],
         'ProvisionedThroughput': {
-            'ReadCapacityUnits': 2,
+            'ReadCapacityUnits': 10,
             'WriteCapacityUnits': 2
         }
     },
@@ -62,8 +62,8 @@ TABLE_DEFINITIONS = {
             }
         ],
         'ProvisionedThroughput': {
-            'ReadCapacityUnits': 20,
-            'WriteCapacityUnits': 4
+            'ReadCapacityUnits': 5,
+            'WriteCapacityUnits': 5
         }
     },
 }

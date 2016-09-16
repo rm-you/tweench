@@ -24,7 +24,7 @@
     <script src="aws-config.js"></script>
 
     <script type="text/javascript">
-        function addImageToPage(image) {
+        function addImageToPage(image, post) {
             var url = base_path + image['path'];
             var thumb_url = base_thumb_path + image['path'];
 
@@ -49,9 +49,9 @@
             var img = document.createElement('img');
             img.className = 'px300';
             img.src = thumb_url;
-            img.alt = 'hello';
-            img.setAttribute('data-post', '1');
-            img.setAttribute('data-user', '1');
+            img.alt = post.title;
+            img.setAttribute('data-post', post.permalink);
+            img.setAttribute('data-user', post.user);
 
             pic.appendChild(src);
             pic.appendChild(img);
@@ -69,10 +69,21 @@
             } else {
                 console.log(data);
                 lastEvaluatedKey = data["LastEvaluatedKey"];
-                var images = data["Items"];
+                var posts = data["Items"];
                 var elements = [];
-                for (var i = 0, len = images.length; i < len; i++) {
-                    elements.push(addImageToPage(images[i]));
+                for (var i = 0, posts_len = posts.length; i < posts_len; i++) {
+                    var post = posts[i];
+                    var images = post.images;
+                    for (var j = 0, images_len = images.length; j < images_len; j++) {
+                        elements.push(addImageToPage(images[j], post));
+                    }
+                    if (elements.length >= maxImageCount) {
+                        lastEvaluatedKey.id = post.id;
+                        break;
+                    }
+                }
+                if (elements.length < maxImageCount) {
+                    getMoreImages(-1);
                 }
                 var $container = $('#container');
                 $container.imagesLoaded(function () {
@@ -102,7 +113,7 @@
                     var user = this.element.find('img').attr('data-user');
                     this.inner.find('img').attr('alt', alt);
                     if (user && post)
-                        this.title = "<a style='color: white;' target='_blank' href='../user/" + user + "'>" + user + "</a> - <a style='color: white;' target='_blank' href='/gwar/viewpost/" + post + "'>" + alt + "</a>";
+                        this.title = "<a style='color: white;' target='_blank' href='https://www.reddit.com/u/" + user + "/submitted/'>" + user + "</a> - <a style='color: white;' target='_blank' href=" + post + "'>" + alt + "</a>";
                 },
 
                 afterShow: function () {
@@ -116,23 +127,39 @@
             });
         }
 
-        function getMoreImages(page) {
-            console.log("Getting more images, page: " + page);
-            var params = {
-                TableName: "images",
-                Limit: pageItemCount,
-                ExclusiveStartKey: lastEvaluatedKey
-            };
-            docClient.scan(params, tableScanCallback);
+        function getMoreImages(page, sequence, scrollDirection) {
+            if (lastEvaluatedKey == null) {
+                console.log("Ran out of images. We're done!");
+                return;
+            } else if (lastEvaluatedKey == -1) {
+                // Set our initial key to null AFTER the null check
+                lastEvaluatedKey = null;
+            }
+
+            if (sequence == null || sequence > 0) {
+                console.log("Getting more images, page/direction: "
+                        + page + "/" + scrollDirection);
+                var params = {
+                    TableName: "posts",
+                    Limit: postLoadCount,
+                    ExclusiveStartKey: lastEvaluatedKey
+                };
+                docClient.scan(params, tableScanCallback);
+            } else {
+                console.log("Sequence was negative, ignoring.");
+            }
+        }
+
+        function ceaseFireCallback() {
+            return lastEvaluatedKey == null;
         }
     </script>
     <script>
         var docClient = new AWS.DynamoDB.DocumentClient();
-        var pageItemCount = 50;
-        var lastEvaluatedKey = null;
-
-        getMoreImages(0);
-        getMoreImages(0);
+        var lastEvaluatedKey = -1;
+        var maxImageCount = 30;
+        var postLoadCount = 5;
+        getMoreImages(-1);
 
         $(document).ready(function () {
             console.log("Document ready, running initial masonry init.");
@@ -150,7 +177,8 @@
                 loader: '<div class="loading"><div>',
                 inflowPixels: 2000,
                 ceaseFireOnEmpty: false,
-                callback: getMoreImages
+                callback: getMoreImages,
+                ceaseFire: ceaseFireCallback
             });
         });
     </script>
