@@ -89,5 +89,6 @@ ENV/
 .ropeproject
 
 tweench.cfg
+client/web/aws-config.js
 
 .idea/

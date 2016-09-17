@@ -3,25 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <title>Thing</title>
-    <link rel="stylesheet" href="https://gwar.ageofikon.com/static/custom.css"
-          type="text/css">
-    <link rel="stylesheet" href="https://gwar.ageofikon.com/static/masonry.css"
-          type="text/css">
-    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.6.3.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
-    <script src="https://npmcdn.com/imagesloaded@4.1/imagesloaded.pkgd.min.js"></script>
-    <script src="https://unpkg.com/masonry-layout@4.1/dist/masonry.pkgd.min.js"></script>
-    <link rel="stylesheet" href="fancybox/jquery.fancybox.css?v=2.1.5"
+    <link rel="stylesheet" href="web/client.css" type="text/css">
+    <link rel="stylesheet" href="web/fancybox/jquery.fancybox.css?v=2.1.5"
           type="text/css" media="screen"/>
-    <script type="text/javascript"
-            src="fancybox/jquery.fancybox.pack.js?v=2.1.5"></script>
     <link rel="stylesheet"
-          href="fancybox/helpers/jquery.fancybox-thumbs.css?v=1.0.7"
+          href="web/fancybox/helpers/jquery.fancybox-thumbs.css?v=1.0.7"
           type="text/css" media="screen"/>
+    <script src="web/jquery-2.1.1.min.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.6.3.min.js"></script>
+    <script src="web/imagesloaded.pkgd.min.js"></script>
+    <script src="web/masonry.pkgd.min.js"></script>
+    <script src="web/jquery.endless-scroll.js"></script>
     <script type="text/javascript"
-            src="fancybox/helpers/jquery.fancybox-thumbs.js?v=1.0.7"></script>
-    <script src="jquery.endless-scroll.js"></script>
-    <script src="aws-config.js"></script>
+    src="web/fancybox/jquery.fancybox.pack.js?v=2.1.5"></script>
+    <script type="text/javascript"
+    src="web/fancybox/helpers/jquery.fancybox-thumbs.js?v=1.0.7"></script>
+    <script src="web/aws-config.js"></script>
 
     <script type="text/javascript">
         function addImageToPage(image, post) {
@@ -30,8 +27,9 @@
 
             var colors = base_path + image['colors'];
 
-            var div = document.createElement('li');
-            div.className = 'item';
+            var li = document.createElement('li');
+            li.classList.add('item');
+            li.classList.add('hidden');
 
             var a = document.createElement('a');
             a.className = 'fancybox-thumb';
@@ -57,9 +55,9 @@
             pic.appendChild(img);
 
             a.appendChild(pic);
-            div.appendChild(a);
-            $('#container').append(div);
-            return div;
+            li.appendChild(a);
+            $('#container').append(li);
+            return li;
         }
 
         function tableScanCallback(error, data) {
@@ -86,14 +84,13 @@
                 $container.imagesLoaded(function () {
                     $container.masonry('appended', elements, true);
                 });
-                if ($container[0].children.length < minTotalImageCount) {
-                    getMoreImages(-1);
-                }
             }
         }
 
         function layoutCompleteCallback(event, items) {
             console.log("Layout complete, enabling fancybox.");
+            downloadLock = false;
+            $(".hidden").removeClass("hidden");
             $(".fancybox-thumb").fancybox({
                 padding: 0,
                 margin: [20, 60, 20, 60],
@@ -125,9 +122,16 @@
                     });
                 }
             });
+            if ($('#container')[0].children.length < minTotalImageCount) {
+                getMoreImages(-1);
+            }
         }
 
         function getMoreImages(page, sequence, scrollDirection) {
+            if (downloadLock) {
+                console.log("Already downloading images, aborting.")
+                return;
+            }
             if (lastEvaluatedKey == null) {
                 console.log("Ran out of images. We're done!");
                 return;
@@ -136,6 +140,7 @@
                 lastEvaluatedKey = null;
             }
 
+            downloadLock = true;
             if (sequence == null || sequence > 0) {
                 console.log("Getting more images, page/direction: "
                         + page + "/" + scrollDirection);
@@ -162,10 +167,11 @@
         }
     </script>
     <script>
+        var downloadLock = false;
         var docClient = new AWS.DynamoDB.DocumentClient();
         var lastEvaluatedKey = -1;
         var maxImageCount = 50;
-        var minTotalImageCount = 20;
+        var minTotalImageCount = 50;
         var postLoadCount = 50;
         var subredditToShow = "FoodPorn";
 

@@ -12,6 +12,10 @@ body {
     max-width: 300px;
 }
 
+.hidden {
+    visibility: hidden;
+}
+
 .column {
     float: left;
 }
