@@ -67,7 +67,7 @@ class DownloadHandler(object):
         image_urls = self.imgur.get_album(album_id)
         images = [self._download_one_imgur(url)
                   for url in image_urls if url is not None]
-        return images
+        return [image for image in images if image is not None]
 
     def _hashes(self, hashes):
         hashes = hashes.strip(',').split(',')
@@ -75,9 +75,12 @@ class DownloadHandler(object):
         image_urls = [self.imgur.get_image(image_id) for image_id in hashes]
         images = [self._download_one_imgur(url)
                   for url in image_urls if url is not None]
-        return images
+        return [image for image in images if image is not None]
 
     def _download_one_imgur(self, url):
+        if not url:
+            LOG.info(u"Imgur hash no longer valid.")
+            return None
         name = url.split('/')[-1]
         path = "{hash}/{name}".format(hash=hashlib.md5(url).hexdigest(),
                                       name=name)
@@ -88,6 +91,10 @@ class DownloadHandler(object):
 
         LOG.info(u"Downloading '{path}': {url}".format(path=path, url=url))
         r = requests.get(url, stream=False)
+        if r.status_code != 200:
+            LOG.info(u"Imgur link could not be fetched, status code: {status}"
+                     .format(status=r.status_code))
+            return {'url': url}
         image = self._handle_image_data(r.content, path)
         return {
             'url': url,
@@ -102,6 +109,10 @@ class DownloadHandler(object):
         if gfy_data and 'gfyItem' in gfy_data:
             url = gfy_data['gfyItem']['webmUrl']
             r1 = requests.get(url, stream=False)
+            if r1.status_code != 200:
+                LOG.info(u"Gfycat image could not be downloaded. "
+                         u"Status code: {code}".format(code=r1.status_code))
+                return []
 
             thumb_url = (gfy_data['gfyItem'].get('max2mbGif') or
                          gfy_data['gfyItem'].get('max5mbGif'))
@@ -128,6 +139,10 @@ class DownloadHandler(object):
                                       name=name)
         if not self.s3.object_exists(self.conf.IMAGE_BUCKET_NAME, path):
             r = requests.get(url, stream=False)
+            if r.status_code != 200:
+                LOG.info(u"Failed to fetch ({status}): {url}"
+                         .format(status=r.status_code, url=url))
+                return []
             self._handle_image_data(r.content, path)
         return [{'url': url, 'path': path}]
 

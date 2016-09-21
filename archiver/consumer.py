@@ -13,10 +13,11 @@ LOG = logging.getLogger(__name__)
 
 
 class Consumer(object):
-    def __init__(self):
+    def __init__(self, override_queue_name=None):
         self.conf = config.get_config()
         self.r = praw.Reddit(self.conf.REDDIT_AGENT_NAME)
-        self.sqs = clients.sqs_client(self.conf.QUEUE_NAME)
+        self.sqs = clients.sqs_client(override_queue_name or
+                                      self.conf.QUEUE_NAME)
         self.downloader = image_handling.DownloadHandler()
         self._type_map = {
             constants.MESSAGE_SUBREDDIT: self.store_subreddit,
