@@ -51,7 +51,11 @@ class Consumer(object):
 
     def store_post(self, post_link):
         LOG.info(u"Storing post: {post}".format(post=post_link))
-        praw_post = self.r.get_submission(post_link)
+        try:
+            praw_post = self.r.get_submission(post_link)
+        except praw.errors.NotFound:
+            LOG.info(u"Post not found: {post}".format(post=post_link))
+            return
         self.persistence.persist_user(praw_post.author)
         post_existed = self.persistence.persist_post(praw_post)
         if post_existed:

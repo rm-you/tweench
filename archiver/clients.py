@@ -138,8 +138,8 @@ class ImgurClient(object):
         url = "{0}{1}".format(self._base_url, album_url)
         r = requests.get(url, headers=self._prepare_headers())
         images = r.json().get('data', {}).get('images', [])
-        links = [i.get('link') for i in images if i.get('link')]
-        return links
+        links = {i.get('link') for i in images if i.get('link')}
+        return list(links)
 
     def get_image(self, image_id):
         image_url = self._image.format(id=image_id)

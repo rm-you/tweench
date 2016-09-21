@@ -122,7 +122,9 @@ class DownloadHandler(object):
             path = "{hash}/{name}".format(hash=hashlib.md5(url).hexdigest(),
                                           name=name)
             self._handle_image_data(
-                data=r1.content, thumb_data=r2.content, path=path)
+                data=r1.content, thumb_data=r2.content, path=path,
+                content_type=r1.headers['content-type'],
+                thumb_content_type=r2.headers['content-type'])
             return [{
                 'url': url,
                 'path': path,
@@ -138,23 +140,31 @@ class DownloadHandler(object):
         path = "{hash}/{name}".format(hash=hashlib.md5(url).hexdigest(),
                                       name=name)
         if not self.s3.object_exists(self.conf.IMAGE_BUCKET_NAME, path):
-            r = requests.get(url, stream=False)
-            if r.status_code != 200:
+            try:
+                r = requests.get(url, stream=False)
+            except requests.exceptions.ConnectionError:
+                return [{'url': url}]
+            if r.status_code != 200 or r.headers['content-type'].startswith(
+                    "text"):
                 LOG.info(u"Failed to fetch ({status}): {url}"
                          .format(status=r.status_code, url=url))
-                return []
+                return [{'url': url}]
             self._handle_image_data(r.content, path)
         return [{'url': url, 'path': path}]
 
-    def _handle_image_data(self, data, path, thumb_data=None):
-        image = Image(path=path, data=data, thumb_data=thumb_data)
+    def _handle_image_data(self, data, path, thumb_data=None,
+                           content_type=None, thumb_content_type=None):
+        image = Image(path=path, data=data, thumb_data=thumb_data,
+                      content_type=content_type,
+                      thumb_content_type=thumb_content_type)
         image.upload()
         image.upload_thumbnail(self.conf.THUMBNAIL_SIZE)
         return image
 
 
 class Image(object):
-    def __init__(self, path, data, thumb_data=None, content_type=None):
+    def __init__(self, path, data, thumb_data=None, content_type=None,
+                 thumb_content_type=None):
         self.conf = config.get_config()
         self.s3 = clients.s3_client()
         self.path = path
@@ -163,15 +173,19 @@ class Image(object):
         io_data = io.BytesIO(self.data)
         try:
             self.pi = PILImage.open(io_data)
-            self.type = content_type or self.pi.format
+            self.type = (content_type or
+                         "image/{}".format(self.pi.format.lower()))
+            self.thumb_type = (thumb_content_type or
+                               "image/{}".format(self.pi.format.lower()))
         except:
             self.pi = None
             self.type = content_type
+            self.thumb_type = thumb_content_type
 
     def upload(self):
         io_data = io.BytesIO(self.data)
         self.s3.upload(self.conf.IMAGE_BUCKET_NAME, self.path, io_data,
-                       {"ContentType": "image/{}".format(self.type.lower())})
+                       {"ContentType": self.type})
 
     def upload_thumbnail(self, width=None, height=None):
         if self.thumb_data:
@@ -181,7 +195,7 @@ class Image(object):
                 raise ArithmeticError("Must supply either width or height!")
             thumb_data = self._thumbnail(width, height)
         self.s3.upload(self.conf.THUMB_BUCKET_NAME, self.path, thumb_data,
-                       {"ContentType": "image/{}".format(self.type.lower())})
+                       {"ContentType": self.thumb_type})
 
     def _thumbnail(self, width=None, height=None):
         LOG.info(u"Thumbnailing data at ({} x {})".format(width, height))
@@ -194,7 +208,7 @@ class Image(object):
 
         thumb = self.pi.resize((width, height), PILImage.ANTIALIAS)
         thumb_bytes = io.BytesIO()
-        thumb.save(thumb_bytes, self.type)
+        thumb.save(thumb_bytes, self.pi.format)
         thumb_bytes.seek(0)
         return thumb_bytes
 

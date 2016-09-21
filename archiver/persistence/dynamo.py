@@ -101,7 +101,8 @@ class DynamoPersistence(base_persistence.Persistence):
     def persist_images(self, images):
         with self.tables[IMAGE_TABLE].batch_writer() as batch:
             for i in images:
-                batch.put_item(Item=i)
+                if 'path' in i:
+                    batch.put_item(Item=i)
 
     def persist_post(self, praw_post):
         # Only check to see if the post existed already
