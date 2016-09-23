@@ -2,6 +2,7 @@ import hashlib
 
 import mock
 import requests_mock
+from requests import structures
 import unittest
 
 from archiver import image_handling
@@ -30,6 +31,8 @@ FAKE_GFY_WEBM = 'https://fat.gfycat.com/{}'.format(FAKE_GFY_WEBM_NAME)
 FAKE_GFY_THUMB = 'https://thumbs.gfycat.com/{}-small.gif'.format(FAKE_GFY_ID)
 FAKE_GFY_WEBM_MD5 = hashlib.md5(FAKE_GFY_WEBM).hexdigest()
 FAKE_GFY_PATH = '{}/{}'.format(FAKE_GFY_WEBM_MD5, FAKE_GFY_WEBM_NAME)
+FAKE_CONTENT_TYPE_WEBM = "video/webm"
+FAKE_CONTENT_TYPE_GIF = "image/gif"
 FAKE_GFY_IMAGE_WIDTH = 1024
 FAKE_GFY_IMAGE_HEIGHT = 768
 
@@ -326,7 +329,8 @@ class TestDownloadHandler(unittest.TestCase):
 
         # Image object was created
         mock_image.assert_called_once_with(
-            path=FAKE_IMAGE_PATH1, data=FAKE_IMAGE_DATA1, thumb_data=None)
+            path=FAKE_IMAGE_PATH1, data=FAKE_IMAGE_DATA1, content_type=None,
+            thumb_content_type=None, thumb_data=None)
 
         # Image and Thumbnail were uploaded
         mock_image().upload.assert_called_once()
@@ -369,8 +373,10 @@ class TestDownloadHandler(unittest.TestCase):
         # Image objects were created
         mock_image.assert_has_calls([
             mock.call(path=FAKE_IMAGE_PATH1, data=FAKE_IMAGE_DATA1,
+                      content_type=None, thumb_content_type=None,
                       thumb_data=None),
             mock.call(path=FAKE_IMAGE_PATH2, data=FAKE_IMAGE_DATA2,
+                      content_type=None, thumb_content_type=None,
                       thumb_data=None)
         ], any_order=True)
 
@@ -431,8 +437,10 @@ class TestDownloadHandler(unittest.TestCase):
         # Image objects were created
         mock_image.assert_has_calls([
             mock.call(path=FAKE_IMAGE_PATH1, data=FAKE_IMAGE_DATA1,
+                      content_type=None, thumb_content_type=None,
                       thumb_data=None),
             mock.call(path=FAKE_IMAGE_PATH2, data=FAKE_IMAGE_DATA2,
+                      content_type=None, thumb_content_type=None,
                       thumb_data=None)
         ], any_order=True)
 
@@ -467,7 +475,8 @@ class TestDownloadHandler(unittest.TestCase):
     @requests_mock.mock()
     def test__external(self, mock_image, mock_req):
         # Requests should have one GET for our fake image URL
-        mock_req.get(FAKE_IMAGE_URL1, content=FAKE_IMAGE_DATA1)
+        head = structures.CaseInsensitiveDict({'Content-Type': "image/jpeg"})
+        mock_req.get(FAKE_IMAGE_URL1, content=FAKE_IMAGE_DATA1, headers=head)
 
         # Call _external
         images = self.dh._external(FAKE_IMAGE_URL1)
@@ -478,7 +487,8 @@ class TestDownloadHandler(unittest.TestCase):
 
         # Image object was created
         mock_image.assert_called_once_with(
-            path=FAKE_IMAGE_PATH1, data=FAKE_IMAGE_DATA1, thumb_data=None)
+            path=FAKE_IMAGE_PATH1, data=FAKE_IMAGE_DATA1,
+            content_type=None, thumb_content_type=None, thumb_data=None)
 
         # Image and Thumbnail were uploaded
         mock_image().upload.assert_called_once()
@@ -503,8 +513,10 @@ class TestDownloadHandler(unittest.TestCase):
         }
 
         # Requests should have one GET for each fake image URL
-        mock_req.get(FAKE_GFY_WEBM, content=FAKE_IMAGE_DATA1)
-        mock_req.get(FAKE_GFY_THUMB, content=FAKE_IMAGE_DATA2)
+        head1 = structures.CaseInsensitiveDict({'Content-Type': "video/webm"})
+        head2 = structures.CaseInsensitiveDict({'Content-Type': "image/gif"})
+        mock_req.get(FAKE_GFY_WEBM, content=FAKE_IMAGE_DATA1, headers=head1)
+        mock_req.get(FAKE_GFY_THUMB, content=FAKE_IMAGE_DATA2, headers=head2)
 
         # Call _gfycat
         images = self.dh._gfycat(FAKE_GFY_ID)
@@ -520,7 +532,9 @@ class TestDownloadHandler(unittest.TestCase):
         mock_image.assert_called_once_with(
             path=FAKE_GFY_PATH,
             data=FAKE_IMAGE_DATA1,
-            thumb_data=FAKE_IMAGE_DATA2
+            thumb_data=FAKE_IMAGE_DATA2,
+            content_type=FAKE_CONTENT_TYPE_WEBM,
+            thumb_content_type=FAKE_CONTENT_TYPE_GIF
         )
 
         # Image and Thumbnail were uploaded
