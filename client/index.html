@@ -72,8 +72,13 @@
                 for (var i = 0, posts_len = posts.length; i < posts_len; i++) {
                     var post = posts[i];
                     var images = post.images;
+                    if (typeof(images) === 'undefined') {
+                        continue;
+                    }
                     for (var j = 0, images_len = images.length; j < images_len; j++) {
-                        elements.push(addImageToPage(images[j], post));
+                        if (typeof(images[j]['path']) !== 'undefined') {
+                            elements.push(addImageToPage(images[j], post));
+                        }
                     }
                     if (elements.length >= maxImageCount) {
                         lastEvaluatedKey.id = post.id;
