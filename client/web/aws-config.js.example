@@ -5,3 +5,5 @@ AWS.config.update({
 AWS.config.region = 'us-east-1';
 base_path = "https://s3.amazonaws.com/my_bucket/";
 base_thumb_path = "https://s3.amazonaws.com/my_thumb_bucket/";
+subreddit = "some_subreddit";
+page_title = "Title goes here!";
