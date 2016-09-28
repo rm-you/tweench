@@ -92,3 +92,4 @@ tweench.cfg
 client/web/aws-config.js
 
 .idea/
+.DS_Store
