@@ -20,15 +20,6 @@
     <script src="web/aws-config.js"></script>
     <script src="web/tweench.js"></script>
     <script>
-        document.title = page_title;
-        var downloadLock = false;
-        var lastEvaluatedKey = -1;
-        var maxImageCount = 100;
-
-        var minTotalImageCount = 50;
-        var postLoadCount = 1000;
-
-        var docClient = new AWS.DynamoDB.DocumentClient();
         getMoreImages(-1);
 
         $(document).ready(function () {
@@ -45,7 +36,7 @@
                 fireOnce: false,
                 fireDelay: false,
                 loader: '<div class="loading"><div>',
-                inflowPixels: 2000,
+                inflowPixels: 5000,
                 ceaseFireOnEmpty: false,
                 callback: getMoreImages,
                 ceaseFire: ceaseFireCallback

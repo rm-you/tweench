@@ -1,3 +1,7 @@
+var downloadLock = false;
+var lastEvaluatedKey = null;
+var docClient = new AWS.DynamoDB.DocumentClient();
+
 function addImageToPage(image, post) {
     var url = base_path + image['path'];
     var thumb_url = base_thumb_path + image['path'];
@@ -37,8 +41,8 @@ function addImageToPage(image, post) {
     return li;
 }
 
-function tableScanCallback(error, data) {
-    console.log("Table scan complete.");
+function tableQueryCallback(error, data) {
+    console.log("Table query complete.");
     if (error) {
         console.log(error);
     } else {
@@ -62,6 +66,7 @@ function tableScanCallback(error, data) {
                 break;
             }
         }
+        console.log("Loaded " + elements.length + " images.");
         var $container = $('#container');
         $container.imagesLoaded(function () {
             $container.masonry('appended', elements, true);
@@ -81,9 +86,9 @@ function layoutCompleteCallback(event, items) {
         helpers: {
             title: {
                 type: 'over'
-            },
-            thumbs: {
-                height: 50
+            // },
+            // thumbs: {
+            //     height: 50
             }
         },
         beforeShow: function () {
@@ -111,15 +116,16 @@ function layoutCompleteCallback(event, items) {
 
 function getMoreImages(page, sequence, scrollDirection) {
     if (downloadLock) {
-        console.log("Already downloading images, aborting.")
+        console.log("Already downloading images, aborting.");
         return;
     }
-    if (lastEvaluatedKey == null) {
+    if (lastEvaluatedKey === undefined) {
+        // AWS docs claim LastEvaluatedKey will be null but really it is undefined
         console.log("Ran out of images. We're done!");
         return;
-    } else if (lastEvaluatedKey == -1) {
-        // Set our initial key to null AFTER the null check
-        lastEvaluatedKey = null;
+    } else if (lastEvaluatedKey === null) {
+        // Set our initial key to undefined AFTER the null check
+        lastEvaluatedKey = undefined;
     }
 
     downloadLock = true;
@@ -128,17 +134,19 @@ function getMoreImages(page, sequence, scrollDirection) {
             + page + "/" + scrollDirection);
         var params = {
             TableName: "posts",
+            IndexName: "subreddit-created-index",
             Limit: postLoadCount,
-            FilterExpression: "#sr = :name",
+            KeyConditionExpression: "#sr = :name",
             ExpressionAttributeNames: {
                 "#sr": "subreddit"
             },
             ExpressionAttributeValues: {
                 ":name": subreddit
             },
-            ExclusiveStartKey: lastEvaluatedKey
+            ExclusiveStartKey: lastEvaluatedKey,
+            ScanIndexForward: false
         };
-        docClient.scan(params, tableScanCallback);
+        docClient.query(params, tableQueryCallback);
     } else {
         console.log("Sequence was negative, ignoring.");
     }

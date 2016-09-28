@@ -1,9 +1,15 @@
+// Congrats! You found a key. It is scope-limited and was designed to be public. :)
 AWS.config.update({
-    accessKeyId: 'my_access_key_id',
-    secretAccessKey: 'my_secret_access_key'
+    accessKeyId: 'my_access_key_id', // I use atob(...) to obfuscate from scrapers
+    secretAccessKey: 'my_secret_access_key' // I use atob(...) to obfuscate from scrapers
 });
 AWS.config.region = 'us-east-1';
+
 base_path = "https://s3.amazonaws.com/my_bucket/";
 base_thumb_path = "https://s3.amazonaws.com/my_thumb_bucket/";
 subreddit = "some_subreddit";
-page_title = "Title goes here!";
+document.title = "Title goes here!";
+
+postLoadCount = 100;
+maxImageCount = 150;
+minTotalImageCount = 50;
