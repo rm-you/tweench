@@ -1,6 +1,8 @@
+import functools
 import logging
 
 import praw
+import praw.exceptions
 
 from archiver import clients
 from archiver import config
@@ -40,20 +42,30 @@ class Consumer(object):
     def store_subreddit(self, subreddit_name, query_type, query_num):
         LOG.info(u"Storing subreddit: {subreddit}"
                  .format(subreddit=subreddit_name))
-        praw_subreddit = self.r.get_subreddit(subreddit_name)
+        praw_subreddit = self.r.subreddit(subreddit_name)
         self.persistence.persist_subreddit(praw_subreddit)
 
-        func = getattr(praw_subreddit, query_type)
+        func_map = {
+            constants.QUERY_TOP_ALL_TIME:
+                functools.partial(praw_subreddit.top, time_filter="all"),
+            constants.QUERY_TOP_TODAY:
+                functools.partial(praw_subreddit.top, time_filter="day"),
+            constants.QUERY_HOT: praw_subreddit.hot
+        }
+        func = func_map.get(query_type)
         posts = func(limit=query_num)
         for post in posts:
             m = messages.PostMessage(post.permalink)
             m.enqueue(self.sqs)
 
     def store_post(self, post_link):
+        if post_link.startswith("/r/"):
+            post_link = "https://reddit.com" + post_link
         LOG.info(u"Storing post: {post}".format(post=post_link))
         try:
-            praw_post = self.r.get_submission(post_link)
-        except praw.errors.NotFound:
+            praw_post = self.r.submission(url=post_link)
+            LOG.info(u"Stored post.")
+        except praw.exceptions.APIException:
             LOG.info(u"Post not found: {post}".format(post=post_link))
             return
         self.persistence.persist_user(praw_post.author)
@@ -63,7 +75,10 @@ class Consumer(object):
                      .format(post=post_link))
             return
 
+        LOG.info(u"Grabbing images")
         images = self.downloader.store_images(praw_post)
         if images:
             self.persistence.persist_images(images)
         self.persistence.finalize_post(praw_post, images)
+        LOG.info(u"Post finalized.")
+
