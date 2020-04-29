@@ -150,7 +150,7 @@ class ImgurClient(object):
 
 
 class MashapeImgurClient(ImgurClient):
-    _base_url = "https://imgur-apiv3.p.mashape.com"
+    _base_url = "https://imgur-apiv3.p.rapidapi.com"
 
     def __init__(self, client_id, mashape_key):
         super(MashapeImgurClient, self).__init__(client_id)
