@@ -93,7 +93,10 @@ class DynamoPersistence(base_persistence.Persistence):
             'name': praw_subreddit.display_name,
             'title': praw_subreddit.title,
         }
-        self.tables[SUBREDDIT_TABLE].put_item(Item=data)
+        sub = self.tables[SUBREDDIT_TABLE].get_item(Key={'name': praw_subreddit.display_name})
+        if 'Item' not in sub:
+            print("sub not found: %s" % praw_subreddit.display_name)
+            self.tables[SUBREDDIT_TABLE].put_item(Item=data)
 
     def persist_user(self, praw_user):
         pass
